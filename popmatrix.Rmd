@@ -1,0 +1,45 @@
+---
+title: "Rabbits and Hawks"
+author: "Shuhan Song"
+date: "5/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE, 
+                      message = FALSE)
+library(tidyverse)
+```
+
+```{r}
+source("R/evolve_pop.R")
+# set parameters
+fert_rab = c(0,2,6,1) # fertility
+surv_rab = c(0.8,0.85,0.65,0.1) #survivability
+ini = c(0,0,10,0) # initial population
+nyears = 20
+
+# use the function
+rab_pop=evolve_pop(fert_rab, surv_rab, ini, nyears)
+
+rab_pop$popbyage[1,20]
+```
+
+```{r}
+# sobel
+# fertility rates
+F1 = 0.0
+F2 = 2
+F3 = 6
+F4 = 1
+
+# survivability
+p01 = 0.8 
+p12 = 0.85
+p23 = 0.65
+p34 = 0.1
+
+
+```
+
