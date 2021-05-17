@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE,
                       warning = FALSE, 
                       message = FALSE)
 library(tidyverse)
+library(sensitivity)
 ```
 
 ```{r}
@@ -28,18 +29,43 @@ rab_pop$popbyage[1,20]
 
 ```{r}
 # sobel
-# fertility rates
-F1 = 0.0
-F2 = 2
-F3 = 6
-F4 = 1
 
-# survivability
-p01 = 0.8 
-p12 = 0.85
+# initialize two samples of parameters
+nsample = 200
+sample1 = cbind.data.frame(p01 = runif(n=nsample, min=0.65, max=0.75),
+                           p12 = runif(n=nsample, min=0.75, max=0.8))
+sample2 = cbind.data.frame(p01 = runif(n=nsample, min=0.65, max=0.75),
+                           p12 = runif(n=nsample, min=0.75, max=0.8))
+
+# get sobel samples
+sens_rabsur=soboljansen(model = NULL, sample1, sample2, nboot = 100)
+
+head(sens_rabsur$X)
+nsim=nrow(sens_rabsur$X)
+
+# constant input
+## survivability
 p23 = 0.65
 p34 = 0.1
+## fertility rate
+f1 = 0.0
+f2 = 2
+f3 = 6
+f4 = 1
+## initial population
+ini = c(0,0,10,0)
+## nstep
+nyears = 20
 
+# create wrapper function
+p_wrapper = function(p01, p12, p23=0.65, p34=0.1, f1=0,f2=2,f3=6,f4=1, use_func, initialpop, nstep ) {
+fertility=c(f1,f2,f3,f4)
+survivability= c(p01,p12,p23,p34)
+res = use_func(survivability =survivability, fertility = fertility, initialpop=initialpop, nstep=nstep)
+# now return the final population total
+return(finalpop=res$poptot[nstep])
+}
 
+res = as.data.frame(sens_rabsur$X) %>% pmap_dbl(p_wrapper, initialpop=ini, nstep=nyears, use_func=evolve_pop)
 ```
 

@@ -93,7 +93,7 @@ use function to evolve a population through time
  
 ```{r multitime}
 
-source("../R/evolve_pop.R")
+source("R/evolve_pop.R")
 
 # example evolve China pop
 # fertility rates
@@ -172,7 +172,7 @@ more 2 months - population fertility around 20%, suvivability only 30%
 Try setting this up...
 ```{r}
 
-source("../R/evolve_pop.R")
+source("R/evolve_pop.R")
 
 
 # set up best guess case
@@ -258,7 +258,7 @@ nsim=nrow(sens_micro$X)
 # run model and save what we care about: final population after 12 months 
 # this is already output by evolve_pop so we don't need a compute_metric function
 
-ini = c(1000,1000, 1000)
+ini = c(1000,1000,1000)
 nmonths = 12
 
 
