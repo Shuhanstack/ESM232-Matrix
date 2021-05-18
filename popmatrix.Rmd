@@ -9,9 +9,11 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
                       warning = FALSE, 
-                      message = FALSE)
+                      message = FALSE,
+                      fig.align = "center")
 library(tidyverse)
 library(sensitivity)
+library(patchwork)
 ```
 
 ### 1. Rabbit population in 20 years with initial parameter setting
@@ -33,6 +35,7 @@ rab_pop=evolve_pop(fert_rab, surv_rab, ini, nyears)
 
 # Total population of rabbits after 20 years
 rab_pop1 <- rab_pop$poptot[20]
+rab_pop1
 
 # Population of young rabbits after 20 years
 rab_pop$popbyage[1,20]
@@ -40,30 +43,32 @@ rab_pop$popbyage[1,20]
 
 ### 2. Sensitivity analysis about rabbit population with young and sub-adult survivability variations due to hawks
 
+#### a. Sobel samples and wrapper function
+
 ```{r sobel.df}
 # initialize two samples of parameters
 nsample = 200
 
 sample1 = data.frame(p01 = runif(n=nsample,
-                                       min=0.65,
-                                       max=0.75),
-                           p12 = runif(n=nsample,
-                                       min=0.75,
-                                       max=0.8))
+                                 min=0.65,
+                                 max=0.75),
+                     p12 = runif(n=nsample,
+                                 min=0.75,
+                                 max=0.8))
 
 sample2 = data.frame(p01 = runif(n=nsample, 
                                  min=0.65, 
                                  max=0.75),
-                           p12 = runif(n=nsample,
-                                       min=0.75,
-                                       max=0.8))
+                     p12 = runif(n=nsample,
+                                 min=0.75,
+                                 max=0.8))
 
-# get sobel samples
+# generate sobel samples
 sens_rabsur=soboljansen(model = NULL, sample1, sample2, nboot = 100)
 
 # check the sobel samples we created
-# head(sens_rabsur$X)
-# nsim=nrow(sens_rabsur$X)
+head(sens_rabsur$X)
+nsim=nrow(sens_rabsur$X)
 ```
 
 ```{r constants}
@@ -103,7 +108,6 @@ p_wrapper = function(p01, p12, p23, p34,
   
 # now return the final population total
 return(finalpop=res$poptot[nstep])
-
 }
 
 # apply the wrapper function with sobel samples and constant parameters
@@ -121,63 +125,57 @@ res_df <- as.data.frame(res) %>%
   rename(finalpop=res)
 ```
 
-### 3. Compare the 
+#### b. Rabbit final population under hawks' impact versus the original final population
 
-```{r}
-# Notes to Shuhan: I think the density plot looks better? Let's pick one
-
-# Density plot versus original setting
-ggplot()+
-  geom_density(data = res_df, aes(x=finalpop),
-               fill = "skyblue")+
-  geom_vline(xintercept = rab_pop1,
-             color = "darkblue",
-             linetype = "longdash")+
-  geom_text(aes(x = rab_pop1-900000, 
-                y = 6e-7, 
-                label = "Original Final Pop + num"))+
-  labs(x="Final Population",
-       y = "Density of population results")+
-  theme_minimal()
-
-
-
+```{r boxplot, fig.width=4, fig.height=4}
+# boxplot for final pop
 ggplot(data.frame(finalpop=res), 
        aes(x="", y=finalpop) )+
   geom_boxplot(fill = "skyblue")+
   geom_hline(yintercept = rab_pop1,
              color = "darkblue",
+             size = 1,
              linetype = "longdash")+
-  
   geom_text(aes(y = rab_pop1-300000, 
-                label = "Original Final Pop + num"))+
+                label = sprintf("Original Final Pop %4.0f",rab_pop1)),
+            color = "darkblue")+
+  theme_bw()+
   theme(axis.title.x = element_blank())+
-  labs(y="Final Pop")+
-  theme_minimal()
+  labs(y="Final Rabbit Population",
+       title = "Boxplot of Final Rabbit Population")
 ```
 
-```{r}
-# give our results to sensitivity structure
+#### c. Find out which parameter has more influence on rabbit population
 
+```{r ses}
+# give our results to sensitivity structure
 sens_rabsur=tell(sens_rabsur, res)
 
-# loot at results
+# look at results
 sens_rabsur$S
 sens_rabsur$T
+```
 
-plot(sens_rabsur)
+Both the main effect and total effect results show that the survivability of Young age group (p01) has significantly higher impact on the final population than the Sub-adult age group (p12).
 
+The following scatterplots of parameters versus population outputs also support the finding.
+
+```{r sens.plot, fig.width=11, fig.height=4}
 # graph the most sensitive parameter
 tmp = cbind.data.frame(sens_rabsur$X, pop12=sens_rabsur$y)
 
-ggplot(tmp, aes(p12, pop12))+
+p12 <- ggplot(tmp, aes(p12, pop12))+
   geom_point()+
   labs(x="Survivability of p12",
-       y="pop after 20 years")
+       y="Population after 20 years")+
+  theme_bw()
 
-ggplot(tmp, aes(p01, pop12))+
+p01 <- ggplot(tmp, aes(p01, pop12))+
   geom_point()+
   labs(x="Survivability of p01",
-       y="pop after 20 years")
+       y="Population after 20 years")+
+  theme_bw()
+
+p01 + p12
 ```
 
