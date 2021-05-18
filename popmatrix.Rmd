@@ -1,6 +1,7 @@
 ---
-title: "Rabbits and Hawks"
-author: "Shuhan Song"
+title: "ESM 232 Modeling - Rabbits and Hawks"
+subtitle: "Population Matrix Assignment"
+author: "Shuhan Song, Ruoyu Wang"
 date: "5/16/2021"
 output: html_document
 ---
@@ -13,44 +14,61 @@ library(tidyverse)
 library(sensitivity)
 ```
 
-```{r}
-source("R/evolve_pop.R")
+### 1. Rabbit population in 20 years with initial parameter setting
+
+```{r initial.condition}
 # set parameters
 fert_rab = c(0,2,6,1) # fertility
 surv_rab = c(0.8,0.85,0.65,0.1) #survivability
 ini = c(0,0,10,0) # initial population
 nyears = 20
+```
 
-# use the function
+```{r evolve_pop}
+# call the function
+source("R/evolve_pop.R")
+
+# apply the function with initial setting
 rab_pop=evolve_pop(fert_rab, surv_rab, ini, nyears)
 
-# Total rabbits after 20 years
+# Total population of rabbits after 20 years
 rab_pop1 <- rab_pop$poptot[20]
 
-# Number of young rabbits after 20 years
+# Population of young rabbits after 20 years
 rab_pop$popbyage[1,20]
 ```
 
-```{r}
-# sobel
+### 2. Sensitivity analysis about rabbit population with young and sub-adult survivability variations due to hawks
 
+```{r sobel.df}
 # initialize two samples of parameters
 nsample = 200
-sample1 = cbind.data.frame(p01 = runif(n=nsample, min=0.65, max=0.75),
-                           p12 = runif(n=nsample, min=0.75, max=0.8))
 
-sample2 = cbind.data.frame(p01 = runif(n=nsample, min=0.65, max=0.75),
-                           p12 = runif(n=nsample, min=0.75, max=0.8))
+sample1 = data.frame(p01 = runif(n=nsample,
+                                       min=0.65,
+                                       max=0.75),
+                           p12 = runif(n=nsample,
+                                       min=0.75,
+                                       max=0.8))
+
+sample2 = data.frame(p01 = runif(n=nsample, 
+                                 min=0.65, 
+                                 max=0.75),
+                           p12 = runif(n=nsample,
+                                       min=0.75,
+                                       max=0.8))
 
 # get sobel samples
 sens_rabsur=soboljansen(model = NULL, sample1, sample2, nboot = 100)
 
-head(sens_rabsur$X)
-nsim=nrow(sens_rabsur$X)
+# check the sobel samples we created
+# head(sens_rabsur$X)
+# nsim=nrow(sens_rabsur$X)
 ```
 
-```{r}
-# constant input
+```{r constants}
+# constant inputs
+
 ## survivability
 p23 = 0.65
 p34 = 0.1
@@ -63,38 +81,79 @@ f4 = 1
 
 ## initial population
 ini = c(0,0,10,0)
+
 ## nstep
 nyears = 20
-
-# create wrapper function
-p_wrapper = function(p01, p12, p23=0.65, p34=0.1, f1=0,f2=2,f3=6,f4=1, use_func, initialpop, nstep ) {
-fertility=c(f1,f2,f3,f4)
-survivability= c(p01,p12,p23,p34)
-res = use_func(survivability =survivability, fertility = fertility, initialpop=initialpop, nstep=nstep)
-# now return the final population total
-return(finalpop=res$poptot[nstep])
-}
-
-res = as.data.frame(sens_rabsur$X) %>% pmap_dbl(p_wrapper, initialpop=ini, nstep=nyears, use_func=evolve_pop)
-
-res_df <- as.data.frame(res) %>% 
-  rename(finalpop=res)
-
 ```
 
+```{r wrapper.apply}
+# create wrapper function
+p_wrapper = function(p01, p12, p23, p34,
+                     f1, f2, f3, f4, 
+                     use_func, initialpop, nstep){
+  
+  fertility=c(f1,f2,f3,f4)
+  
+  survivability= c(p01,p12,p23,p34)
+  
+  res = use_func(survivability =survivability,
+                 fertility = fertility,
+                 initialpop=initialpop, 
+                 nstep=nstep)
+  
+# now return the final population total
+return(finalpop=res$poptot[nstep])
+
+}
+
+# apply the wrapper function with sobel samples and constant parameters
+res = sens_rabsur$X %>%
+  pmap_dbl(p_wrapper, 
+           p23=p23, p34=p34,
+           f1=f1, f2=f2,
+           f3=f3, f4=f4,
+           initialpop=ini, 
+           nstep=nyears, 
+           use_func=evolve_pop)
+
+# store results in a dataframe 
+res_df <- as.data.frame(res) %>% 
+  rename(finalpop=res)
+```
+
+### 3. Compare the 
+
 ```{r}
+# Notes to Shuhan: I think the density plot looks better? Let's pick one
+
+# Density plot versus original setting
 ggplot()+
-  geom_density(data = res_df, aes(x=finalpop))+
-  geom_vline(xintercept = rab_pop1)
+  geom_density(data = res_df, aes(x=finalpop),
+               fill = "skyblue")+
+  geom_vline(xintercept = rab_pop1,
+             color = "darkblue",
+             linetype = "longdash")+
+  geom_text(aes(x = rab_pop1-900000, 
+                y = 6e-7, 
+                label = "Original Final Pop + num"))+
+  labs(x="Final Population",
+       y = "Density of population results")+
+  theme_minimal()
 
 
 
 ggplot(data.frame(finalpop=res), 
        aes(x="", y=finalpop) )+
-  geom_boxplot()+
-  geom_hline(yintercept = rab_pop1)+
+  geom_boxplot(fill = "skyblue")+
+  geom_hline(yintercept = rab_pop1,
+             color = "darkblue",
+             linetype = "longdash")+
+  
+  geom_text(aes(y = rab_pop1-300000, 
+                label = "Original Final Pop + num"))+
   theme(axis.title.x = element_blank())+
-  labs(y="Final Pop")
+  labs(y="Final Pop")+
+  theme_minimal()
 ```
 
 ```{r}
