@@ -35,14 +35,17 @@ leslie_matrix[nclasses,nclasses] = survivability[nclasses]
 pop_structure = matrix(nrow=nclasses, ncol=nstep)
 total_pop = rep(0, times=nstep)
 pop_structure[,1] = initialpop
+total_pop[1] = sum(initialpop)
 
 
 for (i in 2:nstep) {
 
-total_pop[i]=sum(pop_structure[,i-1])
 pop_structure[,i] = leslie_matrix %*% pop_structure[,i-1]
+
+total_pop[i] = sum(pop_structure[,i])
 
 }
 
-return(list(popbyage=pop_structure, poptot=total_pop))
+return(list(popbyage=pop_structure, 
+            poptot=total_pop))
 }
